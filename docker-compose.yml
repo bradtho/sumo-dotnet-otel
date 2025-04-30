@@ -1,0 +1,58 @@
+services:
+  client:
+    build:
+      context: ./HttpClientPollingApp
+      dockerfile: ../Dockerfile
+    entrypoint: "dotnet ./out/HttpClientPollingApp.dll"
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      # OpenTelemetry environmental variables:
+      OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+    depends_on:
+      - server
+      - db
+
+  server:
+    build:
+      context: ./OpenTelemetryMvcApp
+      dockerfile: ../Dockerfile
+    entrypoint: "dotnet ./out/OpenTelemetryMvcApp.dll"
+    ports:
+      - "5001:80"
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      ASPNETCORE_URLS: http://+:80
+      ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection}
+      # OpenTelemetry environmental variables:
+      OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+    depends_on:
+      - db
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    user: root
+    environment:
+      ACCEPT_EULA: ${ACCEPT_EULA}
+      SA_PASSWORD: ${SA_PASSWORD}
+    ports:
+      - "1433:1433"
+
+  otelcol:
+    image: public.ecr.aws/sumologic/sumologic-otel-collector:latest
+    volumes:
+      - ./otel-config.yaml:/etc/otel-config.yaml
+    command: ["--config=/etc/otel-config.yaml"]
+    environment:
+      JAEGER_ENDPOINT: "jaeger:4317"
+      SUMOLOGIC_INSTALLATION_TOKEN: ${SUMOLOGIC_INSTALLATION_TOKEN}
+    ports:
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP HTTP receiver
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.50.0
+    ports:
+      - "16686:16686" # Jaeger Web UI

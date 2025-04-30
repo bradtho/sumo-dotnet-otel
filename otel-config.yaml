@@ -1,0 +1,52 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+processors:
+  batch:
+  memory_limiter:
+    # check_interval is the time between measurements of memory usage for the
+    # purposes of avoiding going over the limits. Defaults to zero, so no
+    # checks will be performed. Values below 1 second are not recommended since
+    # it can result in unnecessary CPU consumption.
+    check_interval: 5s
+    # Maximum amount of memory, in MiB, targeted to be allocated by the process heap.
+    # Note that typically the total memory usage of process will be about 50MiB higher
+    # than this value.
+    limit_mib: 1900
+    # The queued_retry processor uses a bounded queue to relay batches from the receiver or previous
+    # processor to the next processor.
+extensions:
+  sumologic:
+    installation_token: ${SUMOLOGIC_INSTALLATION_TOKEN}
+    collector_name: otelcol
+    clobber: true
+
+#   health_check: {}
+exporters:
+  debug:
+    verbosity: detailed
+  otlp:
+    endpoint: "${JAEGER_ENDPOINT}"
+    tls:
+      insecure: true
+  sumologic:
+
+service:
+  extensions: [sumologic]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [debug, otlp, sumologic]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [debug, sumologic]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [debug, sumologic]
