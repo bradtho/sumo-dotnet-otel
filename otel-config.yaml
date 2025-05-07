@@ -36,7 +36,6 @@ exporters:
       insecure: true
 
 service:
-  extensions: [sumologic]
   pipelines:
     traces:
       receivers: [otlp]
