@@ -19,11 +19,6 @@ processors:
     limit_mib: 1900
     # The queued_retry processor uses a bounded queue to relay batches from the receiver or previous
     # processor to the next processor.
-extensions:
-  sumologic:
-    installation_token: ${SUMOLOGIC_INSTALLATION_TOKEN}
-    collector_name: otelcol
-    clobber: true
 
 #   health_check: {}
 exporters:
@@ -33,7 +28,12 @@ exporters:
     endpoint: "${JAEGER_ENDPOINT}"
     tls:
       insecure: true
-  sumologic:
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+  loki:
+    endpoint: "${LOKI_ENDPOINT}"
+    tls:
+      insecure: true
 
 service:
   extensions: [sumologic]
@@ -41,12 +41,12 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [debug, otlp, sumologic]
+      exporters: [debug, otlp]
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [debug, sumologic]
+      exporters: [debug, prometheus]
     logs:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [debug, sumologic]
+      exporters: [debug, loki]
